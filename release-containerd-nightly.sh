@@ -42,7 +42,7 @@ VERSION=nigthly-$(date +'%Y%m%d')-$(git log --format=%h -1)
 
 # Create amd64 release
 echo "Creating amd64 release ..."
-make release
+make release VERSION=${VERSION}
 
 # Cross compile for the other architectures
 CONTAINERD_ARCH=(

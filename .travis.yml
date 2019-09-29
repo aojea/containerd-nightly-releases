@@ -17,7 +17,7 @@ install:
 - cd $GOPATH/src/github.com/containerd/containerd
 script:
 - export CONTAINERD_COMMIT=$(git log --format=%h -1)
-- export TRAVIS_TAG=nigthly-$(date +'%Y%m%d')-$CONTAINERD_COMMIT
+- export TRAVIS_TAG=nigthly-$CONTAINERD_COMMIT
 - sudo PATH=$PATH GOPATH=$GOPATH $TRAVIS_BUILD_DIR/release-containerd-nightly.sh
 before_deploy:
 - git config --local user.name "Nigthly bot"
