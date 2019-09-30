@@ -20,11 +20,11 @@ install:
 - cd $GOPATH/src/github.com/containerd/containerd
 script:
 - export CONTAINERD_COMMIT=$(git log --format=%h -1)
-- export TRAVIS_TAG=nigthly-$CONTAINERD_COMMIT
+- export TRAVIS_TAG=nightly-$CONTAINERD_COMMIT
 - sudo PATH=$PATH GOPATH=$GOPATH $TRAVIS_BUILD_DIR/release-containerd-nightly.sh
 before_deploy:
-- git config --local user.name "Nigthly bot"
-- git config --local user.email "nigthly.bot@noemail.com"
+- git config --local user.name "Nightly bot"
+- git config --local user.email "nightly.bot@noemail.com"
 - cd $TRAVIS_BUILD_DIR
 - git tag $TRAVIS_TAG
 deploy:
@@ -37,5 +37,5 @@ deploy:
   - $GOPATH/src/github.com/containerd/containerd/releases/*.tar.gz.sha256sum
   skip_cleanup: true
   on:
-    repo: aojea/containerd-nigthly-releases
+    repo: aojea/containerd-nightly-releases
     tags: true
