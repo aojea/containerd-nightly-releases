@@ -16,7 +16,7 @@
 
 #
 # Releases and cross compile containerd.
-#
+# Ref: https://wiki.debian.org/CrossToolchains
 set -eu -o pipefail
 
 install_dependencies() {
@@ -24,6 +24,11 @@ install_dependencies() {
   apt-get install crossbuild-essential-${1}
   apt-get install libseccomp-dev:${1}
 }
+
+# Only runs in x86 architecture
+if [ $(go env GOARCH) != "amd64" ]; then 
+    exit 1
+fi
 
 # Add repositories with multiple architectures
 source /etc/os-release
@@ -37,8 +42,11 @@ EOF
 
 apt-get update
 
-# Name release
-VERSION=nightly-$(date +'%Y%m%d')-$(git log --format=%h -1)
+# Name release using Golang's "pseudo-version"
+gitUnix="$(git log -1 --pretty='%ct')"
+gitDate="$(date --utc --date "@$gitUnix" +'%Y%m%d%H%M%S')"
+gitCommit="$(git log -1 --pretty='%h')"
+VERSION="v0.0.0-${gitDate}-${gitCommit}"
 
 # Create amd64 release
 echo "Creating amd64 release ..."
