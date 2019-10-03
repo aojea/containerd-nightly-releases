@@ -19,8 +19,10 @@ install:
 - go get -u github.com/containerd/containerd
 - cd $GOPATH/src/github.com/containerd/containerd
 script:
-- export CONTAINERD_COMMIT=$(git log --format=%h -1)
-- export TRAVIS_TAG=nightly-$CONTAINERD_COMMIT
+- export gitUnix="$(git log -1 --pretty='%ct')"
+- export gitDate="$(date --utc --date "@$gitUnix" +'%Y%m%d%H%M%S')"
+- export gitCommit="$(git log -1 --pretty='%h')"
+- export TRAVIS_TAG="v0.0.0-${gitDate}-${gitCommit}"
 - sudo PATH=$PATH GOPATH=$GOPATH $TRAVIS_BUILD_DIR/release-containerd-nightly.sh
 before_deploy:
 - git config --local user.name "Nightly bot"
