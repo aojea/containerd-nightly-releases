@@ -16,7 +16,7 @@
 
 #
 # Releases and cross compile containerd.
-#
+# Ref: https://wiki.debian.org/CrossToolchains
 set -eu -o pipefail
 
 install_dependencies() {
@@ -25,24 +25,39 @@ install_dependencies() {
   apt-get install libseccomp-dev:${1}
 }
 
+# Only runs in x86 architecture
+if [ $(go env GOARCH) != "amd64" ]; then 
+    exit 1
+fi
+
+# Obtain current directory
+CONTAINERD_DIR=${GOPATH}/src/github.com/containerd/containerd
+RUNC_DIR=${GOPATH}/src/github.com/opencontainers/runc
+
 # Add repositories with multiple architectures
 source /etc/os-release
-cat <<EOF > /etc/apt/sources.list
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ ${VERSION_CODENAME} main multiverse restricted universe
+cat <<EOF > /etc/apt/sources.list.d/ports.list
 deb [arch=armhf,arm64,ppc64el,s390x] http://ports.ubuntu.com/ubuntu-ports/ ${VERSION_CODENAME} main multiverse restricted universe
 deb [arch=armhf,arm64,ppc64el,s390x] http://ports.ubuntu.com/ubuntu-ports/ ${VERSION_CODENAME}-updates main multiverse restricted universe
-deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ ${VERSION_CODENAME}-updates main multiverse restricted universe
-deb [arch=amd64] http://security.ubuntu.com/ubuntu/ ${VERSION_CODENAME}-security main multiverse restricted universe
 EOF
 
-apt-get update
+apt-get update || true
 
-# Name release
-VERSION=nightly-$(date +'%Y%m%d')-$(git log --format=%h -1)
-
-# Create amd64 release
+# Create amd64 releases
 echo "Creating amd64 release ..."
+# Name releases using Golang's "pseudo-version"
+cd ${CONTAINERD_DIR}
+gitUnix="$(git log -1 --pretty='%ct')"
+gitDate="$(date --utc --date "@$gitUnix" +'%Y%m%d%H%M%S')"
+gitCommit="$(git log -1 --pretty='%h')"
+VERSION="0.0.0-${gitDate}-${gitCommit}"
 make release VERSION=${VERSION}
+# We need our own runc for nightlies
+# we use the same version that containerd for consistency
+# https://github.com/containerd/containerd/blob/master/RUNC.md
+cd ${RUNC_DIR}
+make release VERSION=${VERSION}
+cp release/${VERSION}/runc.amd64 ${CONTAINERD_DIR}/releases/
 
 # Cross compile for the other architectures
 CONTAINERD_ARCH=(
@@ -57,7 +72,6 @@ CONTAINERD_ARCH=(
 rm /usr/local/lib/libseccomp* || true
 
 for arch in "${CONTAINERD_ARCH[@]}"; do
-    make clean
     # Select the right compiler for each architecture
     # and install dependencies
     case ${arch} in
@@ -80,10 +94,22 @@ for arch in "${CONTAINERD_ARCH[@]}"; do
     esac
 
     echo "Creating ${arch} release ..."
+    # Create containerd release
+    cd ${CONTAINERD_DIR}
+    make clean
     LD_LIBRARY_PATH=/usr/lib/${ARCH_PREFIX} \
     make release \
         GOARCH=${arch} \
         CC=${ARCH_PREFIX}-gcc \
         CGO_ENABLED=1 \
         VERSION=${VERSION}
+    # Create runc release
+    cd ${RUNC_DIR}
+    make clean
+    LD_LIBRARY_PATH=/usr/lib/${ARCH_PREFIX} \
+    make release \
+        GOARCH=${arch} \
+        CC=${ARCH_PREFIX}-gcc \
+        VERSION=${VERSION}
+    cp release/${VERSION}/runc.${arch} ${CONTAINERD_DIR}/releases/
 done
